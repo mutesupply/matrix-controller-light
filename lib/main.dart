@@ -379,29 +379,38 @@ color: title == "WELCOME" && welcome > 0
 StreamSubscription? scanSub;
 
 Future<void> scanDevices() async {
-  devicesList.clear();
 
-  await FlutterBluePlus.stopScan(); // 🔥 penting
+  setState(() {
+    devicesList.clear();
+  });
+
+  await FlutterBluePlus.stopScan();
+  await Future.delayed(Duration(milliseconds: 300));
+
   await FlutterBluePlus.startScan(
     timeout: const Duration(seconds: 4),
   );
 
-  scanSub?.cancel(); // 🔥 biar tidak numpuk
+  Future.delayed(Duration(seconds: 4), () {
+    FlutterBluePlus.stopScan();
+  });
+
+  scanSub?.cancel();
 
   scanSub = FlutterBluePlus.scanResults.listen((results) {
     for (ScanResult r in results) {
 
-String name = r.device.name.toLowerCase();
+      String name = r.device.name;
 
-if (name.contains("matrix") || name.contains("esp")) {
+      if (name.isNotEmpty) {
 
-        if (!devicesList.contains(r.device)) {
+        if (!devicesList.any((d) => d.id == r.device.id)) {
           setState(() {
             devicesList.add(r.device);
           });
         }
 
-        print("ESP FOUND: $name");
+        print("SCAN: ${r.device.name} | ${r.device.id}");
       }
     }
   });
