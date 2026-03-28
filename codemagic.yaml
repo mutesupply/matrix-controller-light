@@ -1,15 +1,14 @@
-workflows:
-  ios-release:
-    name: iOS Release Build
-    environment:
-      flutter: stable
-      xcode: latest
-    scripts:
-      - flutter pub get
-      - flutter build ios --release --no-codesign
-      - mkdir -p output
-      - find build/ios/iphoneos -name "*.app" -exec cp -r {} output/ \;
-      - cd output
-      - zip -r app.zip .
-    artifacts:
-      - output/app.zip
+scripts:
+  - flutter pub get
+  - flutter build ios --release --no-codesign
+
+  # DEBUG: lihat isi folder
+  - echo "ISI FOLDER:"
+  - ls -R build/ios
+
+  # paksa zip semua isi build ios
+  - cd build/ios
+  - zip -r ios_build.zip .
+
+artifacts:
+  - build/ios/ios_build.zip
