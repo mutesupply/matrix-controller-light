@@ -1,14 +1,11 @@
-scripts:
-  - flutter pub get
-  - flutter build ios --release --no-codesign
-
-  # DEBUG: lihat isi folder
-  - echo "ISI FOLDER:"
-  - ls -R build/ios
-
-  # paksa zip semua isi build ios
-  - cd build/ios
-  - zip -r ios_build.zip .
-
-artifacts:
-  - build/ios/ios_build.zip
+workflows:
+  ios-release:
+    name: iOS Release Build
+    environment:
+      flutter: stable
+      xcode: latest
+    scripts:
+      - flutter pub get
+      - flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
