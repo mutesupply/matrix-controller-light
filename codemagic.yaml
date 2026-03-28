@@ -12,4 +12,4 @@ workflows:
       - cd build_output
       - zip -r app.zip .
     artifacts:
-      - build_output/app.zip
+      - build_output/**
