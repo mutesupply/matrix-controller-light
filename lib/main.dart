@@ -287,8 +287,12 @@ Future<void> connectToBT() async {
   } catch (e) {}
 
   try {
-    await device!.connect(timeout: const Duration(seconds: 5));
+await Future.delayed(const Duration(milliseconds: 500)); // 🔥 penting
 
+await device!.connect(
+  timeout: const Duration(seconds: 10),
+);
+await device!.requestMtu(185);
     // 🔥 FIX LISTENER
     connectionSub?.cancel();
 
@@ -303,14 +307,25 @@ Future<void> connectToBT() async {
     List<BluetoothService> services =
         await device!.discoverServices();
 
-    for (var service in services) {
-      for (var c in service.characteristics) {
-if (c.properties.write || c.properties.writeWithoutResponse) {
-  txCharacteristic = c;
-  print("✅ CHARACTERISTIC DIPILIH: ${c.uuid}");
-}
+for (var service in services) {
+
+if (service.uuid.toString().toLowerCase() ==
+    "12345678-1234-1234-1234-1234567890ab") {
+
+    for (var c in service.characteristics) {
+
+      if (c.properties.write || c.properties.writeWithoutResponse) {
+        txCharacteristic = c;
+
+        print("✅ ESP CHARACTERISTIC DITEMUKAN");
+        break; // 🔥 WAJIB STOP DI SINI
       }
+
     }
+break; // 🔥 TAMBAHKAN INI (PENTING BANGET)
+  }
+
+}
 
     print("Connected BLE!");
   } catch (e) {
@@ -379,39 +394,34 @@ color: title == "WELCOME" && welcome > 0
 StreamSubscription? scanSub;
 
 Future<void> scanDevices() async {
-
   setState(() {
     devicesList.clear();
   });
 
   await FlutterBluePlus.stopScan();
-  await Future.delayed(Duration(milliseconds: 300));
+  await Future.delayed(const Duration(milliseconds: 300));
+
+  await FlutterBluePlus.turnOn();
+  await Future.delayed(const Duration(seconds: 1)); // 🔥 penting
 
   await FlutterBluePlus.startScan(
-    timeout: const Duration(seconds: 4),
+    timeout: const Duration(seconds: 10),
+    continuousUpdates: true,
+    androidUsesFineLocation: true,
   );
-
-  Future.delayed(Duration(seconds: 4), () {
-    FlutterBluePlus.stopScan();
-  });
 
   scanSub?.cancel();
 
   scanSub = FlutterBluePlus.scanResults.listen((results) {
     for (ScanResult r in results) {
 
-      String name = r.device.name;
-
-      if (name.isNotEmpty) {
-
-        if (!devicesList.any((d) => d.id == r.device.id)) {
-          setState(() {
-            devicesList.add(r.device);
-          });
-        }
-
-        print("SCAN: ${r.device.name} | ${r.device.id}");
+      if (!devicesList.any((d) => d.id == r.device.id)) {
+        setState(() {
+          devicesList.add(r.device);
+        });
       }
+
+      print("SCAN: ${r.device.platformName} | ${r.device.id}");
     }
   });
 }
@@ -727,9 +737,9 @@ Container(
       return DropdownMenuItem(
         value: device,
 child: Text(
-  device.name.isNotEmpty
-      ? device.name
-      : "ESP (${device.id})",
+  device.platformName.isNotEmpty
+      ? device.platformName
+      : "ESP (${device.id})", // 🔥 TAMBAH KOMA DI SINI
   style: const TextStyle(color: Colors.white),
 ),
       );
