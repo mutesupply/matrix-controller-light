@@ -7,18 +7,26 @@ workflows:
       xcode: latest
 
     scripts:
+      # Install dependencies
       - flutter pub get
+
+      # Build iOS tanpa signing
       - flutter build ios --release --no-codesign
 
+      # Debug: cek hasil build
       - ls build/ios/iphoneos/
 
+      # Buat folder output
       - mkdir -p build_output
+
+      # Copy semua .app ke folder output
       - cp -r build/ios/iphoneos/*.app build_output/
 
+      # Debug isi folder
       - ls build_output
 
-      - cd build_output
-      - zip -r app.zip .
+      # Zip tanpa cd (IMPORTANT)
+      - zip -r build_output/app.zip build_output
 
     artifacts:
       - build_output/app.zip
