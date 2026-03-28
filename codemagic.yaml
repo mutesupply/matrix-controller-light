@@ -11,7 +11,7 @@ workflows:
       - mkdir -p build_output
       - cp -r build/ios/iphoneos/Runner.app build_output/
       - cd build_output
-      - zip -r app.zip .
+      - zip -r app.zip Runner.app
 
     artifacts:
       - build_output/app.zip
