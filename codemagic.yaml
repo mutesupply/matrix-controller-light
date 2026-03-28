@@ -1,6 +1,7 @@
 workflows:
   ios-release:
     name: iOS Release Build
+
     environment:
       flutter: stable
       xcode: latest
@@ -8,10 +9,16 @@ workflows:
     scripts:
       - flutter pub get
       - flutter build ios --release --no-codesign
+
+      - ls build/ios/iphoneos/
+
       - mkdir -p build_output
-      - cp -r build/ios/iphoneos/Runner.app build_output/
+      - cp -r build/ios/iphoneos/*.app build_output/
+
+      - ls build_output
+
       - cd build_output
-      - zip -r app.zip Runner.app
+      - zip -r app.zip .
 
     artifacts:
       - build_output/app.zip
