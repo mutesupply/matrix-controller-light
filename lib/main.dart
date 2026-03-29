@@ -494,7 +494,8 @@ void dispose() {
 @override
 void initState() {
   super.initState();
-  speech = stt.SpeechToText();
+  // 🔥 JANGAN init di awal
+// speech = stt.SpeechToText();
 scanDevices(); // 🔥 VERSI BARU
   glowTimer = Timer.periodic(const Duration(milliseconds: 80), (_) {
     setState(() {
@@ -507,32 +508,22 @@ Future<void> startListening() async {
   try {
     if (isListening) return;
 
-    // 🔥 WAJIB: request mic dulu
-var status = await Permission.microphone.request();
+    // 🔥 INIT DI SINI (AMAN)
+    speech = stt.SpeechToText();
 
-// 🔥 TAMBAHKAN INI DI SINI
-if (status.isPermanentlyDenied) {
-  print("❌ PERMISSION PERMANENT DENY");
+    var status = await Permission.microphone.request();
 
-  openAppSettings(); // buka setting HP
-  return;
-}
+    if (!status.isGranted) {
+      print("❌ MIC DITOLAK");
+      return;
+    }
 
-// 🔥 INI SUDAH ADA (BIARKAN)
-if (!status.isGranted) {
-  print("❌ MIC DITOLAK");
-  return;
-}
+    if (status.isPermanentlyDenied) {
+      openAppSettings();
+      return;
+    }
 
-    bool available = await speech.initialize(
-      onStatus: (status) {
-        print("STATUS: $status");
-      },
-      onError: (error) {
-        print("ERROR: $error");
-        setState(() => isListening = false);
-      },
-    );
+    bool available = await speech.initialize();
 
     if (!available) {
       print("❌ Speech tidak tersedia");
@@ -543,21 +534,15 @@ if (!status.isGranted) {
 
     await speech.listen(
       localeId: "id_ID",
-      listenFor: const Duration(seconds: 10),
-      pauseFor: const Duration(seconds: 3),
       onResult: (result) {
-        setState(() {
-          lastWords = result.recognizedWords.toLowerCase();
-        });
-
         if (result.finalResult) {
-          processVoiceCommand(lastWords);
+          processVoiceCommand(result.recognizedWords.toLowerCase());
         }
       },
     );
+
   } catch (e) {
-    print("💥 CRASH VOICE: $e");
-    setState(() => isListening = false);
+    print("💥 ERROR VOICE: $e");
   }
 }
 void stopListening() async {
