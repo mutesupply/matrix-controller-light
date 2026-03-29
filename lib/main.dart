@@ -269,6 +269,12 @@ Widget controlButton(String text, Color color, VoidCallback onTap) {
 }
 
 Future<void> connectToBT() async {
+  if (isConnected) {
+    print("Sudah connect");
+    return;
+  }
+
+
   if (selectedDevice == null) {
     print("Belum pilih device");
     return;
@@ -280,30 +286,42 @@ Future<void> connectToBT() async {
   }
 
   isConnecting = true;
+  txCharacteristic = null; // 🔥 RESET WAJIB
   device = selectedDevice;
+await FlutterBluePlus.stopScan(); // 🔥 WAJIB UNTUK iOS
+await Future.delayed(const Duration(milliseconds: 300));
 
-  try {
-    await device!.disconnect();
-  } catch (e) {}
 
   try {
 await Future.delayed(const Duration(milliseconds: 500)); // 🔥 penting
 
-await device!.connect(
-  timeout: const Duration(seconds: 10),
-);
-await device!.requestMtu(185);
+try {
+  await device!.connect(
+    timeout: const Duration(seconds: 10),
+    autoConnect: false, // 🔥 PENTING UNTUK iOS
+  );
+} catch (e) {
+  print("Retry connect...");
+  await Future.delayed(const Duration(seconds: 1));
+  await device!.connect(
+    timeout: const Duration(seconds: 10),
+    autoConnect: false,
+  );
+}
+await Future.delayed(const Duration(milliseconds: 500)); // 🔥 WAJIB
     // 🔥 FIX LISTENER
-    connectionSub?.cancel();
+    connectionSub?.cancel();   // 🔥 tambahkan ini
+connectionSub = device!.connectionState.listen((state) {
 
-    connectionSub = device!.connectionState.listen((state) {
-      setState(() {
-        isConnected = state == BluetoothConnectionState.connected;
-      });
+  setState(() {
+    isConnected = state == BluetoothConnectionState.connected;
+  });
 
-      print("STATE: $state");
-    });
+  print("STATE: $state");
 
+});
+
+await Future.delayed(const Duration(milliseconds: 500)); // 🔥 TAMBAHKAN INI
     List<BluetoothService> services =
         await device!.discoverServices();
 
@@ -316,7 +334,7 @@ if (service.uuid.toString().toLowerCase() ==
 
       if (c.properties.write || c.properties.writeWithoutResponse) {
         txCharacteristic = c;
-
+await Future.delayed(const Duration(milliseconds: 200)); // 🔥 tambahan stabil
         print("✅ ESP CHARACTERISTIC DITEMUKAN");
         break; // 🔥 WAJIB STOP DI SINI
       }
@@ -326,13 +344,21 @@ break; // 🔥 TAMBAHKAN INI (PENTING BANGET)
   }
 
 }
+if (txCharacteristic == null) {
+  print("❌ CHARACTERISTIC TIDAK DITEMUKAN");
+  return;
+}
+await Future.delayed(const Duration(milliseconds: 300)); // 🔥 FINAL DELAY
+print("Connected BLE!");
+await FlutterBluePlus.stopScan();
+} catch (e) {
+  print("Gagal connect: $e");
+} finally {
+  isConnecting = false;   // 🔥 WAJIB
+  setState(() {});        // 🔥 UPDATE UI
+}
 
-    print("Connected BLE!");
-  } catch (e) {
-    print("Gagal connect: $e");
-  }
-
-  isConnecting = false;
+ 
 }
 
 void sendBT(String data) async {
@@ -745,10 +771,15 @@ child: Text(
       );
     }).toList(),
 
-    onChanged: (device) async {
-      setState(() => selectedDevice = device);
-      await connectToBT();
-    },
+onChanged: (device) async {
+  setState(() {
+    selectedDevice = device;
+    isConnecting = true;
+  });
+
+  await Future.delayed(const Duration(milliseconds: 200));
+  await connectToBT();
+},
   ),
 ),
 
