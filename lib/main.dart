@@ -5,15 +5,9 @@ import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 
 import 'dart:async';
-import 'package:permission_handler/permission_handler.dart';
+
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.dumpErrorToConsole(details);
-  };
-
+void main() {
   runApp(const MyApp());
 }
 
@@ -179,11 +173,6 @@ bool isUploading = false;
 class _HomePageState extends State<HomePage> {
 late stt.SpeechToText speech;
 bool isListening = false;
-Future<void> requestPermissions() async {
-  await Permission.bluetooth.request();
-  await Permission.bluetoothScan.request();
-  await Permission.bluetoothConnect.request();
-}
 String lastWords = "";
 BluetoothDevice? device;
 BluetoothCharacteristic? txCharacteristic;
@@ -441,34 +430,16 @@ StreamSubscription? scanSub;
 
 Future<void> scanDevices() async {
 
-  // 🔥 ambil device yg sudah connect
-  List<BluetoothDevice> connected =
-      FlutterBluePlus.connectedDevices;
-
-  for (var d in connected) {
-    if (!devicesList.any((e) => e.id == d.id)) {
-      devicesList.add(d);
-    }
-  }
-
-  // 🔥 jangan hapus device yg sedang connect
-  setState(() {
-    if (device != null) {
-      devicesList.removeWhere((d) => d.id != device!.id);
-    }
-  });
+  devicesList.clear(); // 🔥 reset biar bersih
 
   await FlutterBluePlus.stopScan();
   await Future.delayed(const Duration(milliseconds: 300));
 
-
-  await Future.delayed(const Duration(seconds: 1));
+  await FlutterBluePlus.turnOn();
+  await Future.delayed(const Duration(seconds: 2));
 
   await FlutterBluePlus.startScan(
     timeout: const Duration(seconds: 10),
-    withServices: [
-      Guid("12345678-1234-1234-1234-1234567890ab") // 🔥 WAJIB iOS
-    ],
   );
 
   scanSub?.cancel();
@@ -477,12 +448,10 @@ Future<void> scanDevices() async {
 
     for (ScanResult r in results) {
 
-      // 🔥 simpan nama device
       if (r.device.platformName.isNotEmpty) {
         deviceNames[r.device.id.toString()] = r.device.platformName;
       }
 
-      // 🔥 tambah ke list kalau belum ada
       if (!devicesList.any((d) => d.id == r.device.id)) {
         setState(() {
           devicesList.add(r.device);
@@ -505,57 +474,32 @@ void dispose() {
 @override
 void initState() {
   super.initState();
-
-  requestPermissions(); // 🔥 sudah benar
-
+  speech = stt.SpeechToText();
+//scanDevices(); // 🔥 VERSI BARU
   glowTimer = Timer.periodic(const Duration(milliseconds: 80), (_) {
-    if (!mounted) return;
-
     setState(() {
       glow += 0.05;
       if (glow > 1) glow = 0.3;
     });
   });
 }
-Future<void> startListening() async {
-  try {
-    if (isListening) return;
+void startListening() async {
+  bool available = await speech.initialize();
 
-    // 🔥 INIT DI SINI (AMAN)
-    speech = stt.SpeechToText();
-
-    var status = await Permission.microphone.request();
-
-    if (!status.isGranted) {
-      print("❌ MIC DITOLAK");
-      return;
-    }
-
-    if (status.isPermanentlyDenied) {
-      openAppSettings();
-      return;
-    }
-
-    bool available = await speech.initialize();
-
-    if (!available) {
-      print("❌ Speech tidak tersedia");
-      return;
-    }
-
+  if (available) {
     setState(() => isListening = true);
 
-    await speech.listen(
+    speech.listen(
       localeId: "id_ID",
+      listenFor: const Duration(seconds: 5), // 🔥 tambahkan ini
       onResult: (result) {
-        if (result.finalResult) {
-          processVoiceCommand(result.recognizedWords.toLowerCase());
-        }
+        setState(() {
+          lastWords = result.recognizedWords.toLowerCase();
+        });
+
+        processVoiceCommand(lastWords);
       },
     );
-
-  } catch (e) {
-    print("💥 ERROR VOICE: $e");
   }
 }
 void stopListening() async {
@@ -565,28 +509,15 @@ void stopListening() async {
 void processVoiceCommand(String command) {
   command = command.toLowerCase();
 
-// ===== START =====
-if (command.contains("start") ||
-    command.contains("nyala") ||
-    command.contains("hidup") ||
-    command.contains("hidupkan") ||
-    command.contains("mulai") ||
-    command.contains("matrix on")) {
+  if (command.contains("start") || command.contains("nyalakan")) {
+    sendBT("START");
+    return;
+  }
 
-  sendBT("START");
-  return;
-}
-
-// ===== STOP =====
-if (command.contains("stop") ||
-    command.contains("mati") ||
-    command.contains("matikan") ||
-    command.contains("off") ||
-    command.contains("matrix off")) {
-
-  sendBT("STOP");
-  return;
-}
+  if (command.contains("stop") || command.contains("matikan")) {
+    sendBT("STOP");
+    return;
+  }
 
   if (command.contains("animasi") || command.contains("mainkan")) {
     RegExp reg = RegExp(r'\d+');
@@ -838,24 +769,25 @@ Container(
 
     icon: const Icon(Icons.bluetooth, color: Colors.cyanAccent),
 
-items: devicesList.map((device) {
+    items: devicesList.map((device) {
+      return DropdownMenuItem(
+        value: device,
+String name = deviceNames[device.id.toString()] ??
+              device.platformName;
 
-  String name = deviceNames[device.id.toString()] ??
-                device.platformName;
+child: Text(
+  name.isNotEmpty ? name : "ESP (${device.id})",
+),
+      );
+    }).toList(),
 
-  return DropdownMenuItem<BluetoothDevice>(
-    value: device,
-    child: Text(
-      name.isNotEmpty ? name : "ESP (${device.id})",
-    ),
-  );
-
-}).toList(),
-
-onChanged: (device) {
+onChanged: (device) async {
   setState(() {
     selectedDevice = device;
   });
+
+  await Future.delayed(const Duration(milliseconds: 200));
+  await connectToBT();
 },
   ),
 ),
