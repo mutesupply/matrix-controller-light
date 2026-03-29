@@ -1,6 +1,6 @@
 workflows:
   ios-release:
-    name: iOS IPA Build
+    name: iOS Build (No Sign)
 
     environment:
       flutter: stable
@@ -8,7 +8,11 @@ workflows:
 
     scripts:
       - flutter pub get
-      - flutter build ipa --release
+      - flutter build ios --release --no-codesign
+
+      - mkdir -p build_output
+      - cp -r build/ios/iphoneos/*.app build_output/
+      - zip -r build_output/app.zip build_output
 
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build_output/app.zip
