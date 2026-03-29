@@ -1,27 +1,21 @@
-workflows:
-  ios-release:
-    name: iOS Build No Sign
+scripts:
+  - name: Get packages
+    script: flutter pub get
 
-    environment:
-      flutter: stable
-      xcode: latest
+  # 🔥 WAJIB: prepare project (tanpa build)
+  - name: Prepare iOS
+    script: flutter build ios --config-only
 
-    scripts:
-      - name: Get packages
-        script: flutter pub get
+  - name: Build iOS without signing
+    script: |
+      cd ios
+      pod install
 
-      - name: Build iOS without signing
-        script: |
-          cd ios
+      xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
-
-      - name: Create IPA
-        script: |
-          mkdir -p build_output/Payload
-          cp -r build/ios/iphoneos/Runner.app build_output/Payload/
-          cd build_output
-          zip -r app.ipa Payload
-
-    artifacts:
-      - build_output/app.ipa
+  - name: Create IPA
+    script: |
+      mkdir -p build_output/Payload
+      cp -r build/ios/iphoneos/Runner.app build_output/Payload/
+      cd build_output
+      zip -r app.ipa Payload
