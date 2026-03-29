@@ -1,32 +1,14 @@
 workflows:
   ios-release:
-    name: iOS Release Build
+    name: iOS IPA Build
 
     environment:
       flutter: stable
       xcode: latest
 
     scripts:
-      # Install dependencies
       - flutter pub get
-
-      # Build iOS tanpa signing
-      - flutter build ios --release --no-codesign
-
-      # Debug: cek hasil build
-      - ls build/ios/iphoneos/
-
-      # Buat folder output
-      - mkdir -p build_output
-
-      # Copy semua .app ke folder output
-      - cp -r build/ios/iphoneos/*.app build_output/
-
-      # Debug isi folder
-      - ls build_output
-
-      # Zip tanpa cd (IMPORTANT)
-      - zip -r build_output/app.zip build_output
+      - flutter build ipa --release
 
     artifacts:
-      - build_output/app.zip
+      - build/ios/ipa/*.ipa
