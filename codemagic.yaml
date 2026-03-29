@@ -10,17 +10,17 @@ workflows:
       - name: Get packages
         script: flutter pub get
 
-      # 🔥 FIX: pakai simulator (ANTI GAGAL)
-      - name: Build iOS Simulator
-        script: flutter build ios --simulator
+      # ✅ BUILD UNTUK DEVICE (BUKAN SIMULATOR)
+      - name: Build iOS
+        script: flutter build ios --release --no-codesign
 
-      # 🔥 packaging
-      - name: Create ZIP
+      # 🔥 packaging jadi IPA
+      - name: Create IPA
         script: |
-          mkdir -p build_output
-          cp -r build/ios/iphonesimulator/*.app build_output/
+          mkdir -p build_output/Payload
+          cp -r build/ios/iphoneos/Runner.app build_output/Payload/
           cd build_output
-          zip -r app.zip .
+          zip -r app.ipa Payload
 
     artifacts:
-      - build_output/app.zip
+      - build_output/app.ipa
