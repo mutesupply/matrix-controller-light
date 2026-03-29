@@ -7,7 +7,9 @@ import 'package:syncfusion_flutter_gauges/gauges.dart';
 import 'dart:async';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(const MyApp());
 }
 
@@ -785,33 +787,25 @@ Container(
     isExpanded: true,
     dropdownColor: Colors.black,
     underline: const SizedBox(),
-
     icon: const Icon(Icons.bluetooth, color: Colors.cyanAccent),
 
     items: devicesList.map((device) {
+      String name = deviceNames[device.id.toString()] ??
+                    device.platformName;
 
-
-  String name = deviceNames[device.id.toString()] ??
-                device.platformName;
-
-  return DropdownMenuItem<BluetoothDevice>(
-    value: device,
-    child: Text(
-      name.isNotEmpty ? name : "ESP (${device.id})",
-    ),
-  );
-
-}).toList(),
+      return DropdownMenuItem<BluetoothDevice>(
+        value: device,
+        child: Text(
+          name.isNotEmpty ? name : "ESP (${device.id})",
+        ),
+      );
     }).toList(),
 
-onChanged: (device) async {
-  setState(() {
-    selectedDevice = device;
-  });
-
-  await Future.delayed(const Duration(milliseconds: 200));
-
-},
+    onChanged: (device) {
+      setState(() {
+        selectedDevice = device;
+      });
+    },
   ),
 ),
 
