@@ -5,10 +5,14 @@ import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 
 import 'dart:async';
-
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.dumpErrorToConsole(details);
+  };
 
   runApp(const MyApp());
 }
@@ -175,6 +179,11 @@ bool isUploading = false;
 class _HomePageState extends State<HomePage> {
 late stt.SpeechToText speech;
 bool isListening = false;
+Future<void> requestPermissions() async {
+  await Permission.bluetooth.request();
+  await Permission.bluetoothScan.request();
+  await Permission.bluetoothConnect.request();
+}
 String lastWords = "";
 BluetoothDevice? device;
 BluetoothCharacteristic? txCharacteristic;
@@ -452,6 +461,7 @@ Future<void> scanDevices() async {
   await FlutterBluePlus.stopScan();
   await Future.delayed(const Duration(milliseconds: 300));
 
+
   await Future.delayed(const Duration(seconds: 1));
 
   await FlutterBluePlus.startScan(
@@ -495,32 +505,57 @@ void dispose() {
 @override
 void initState() {
   super.initState();
-  speech = stt.SpeechToText();
+
+  requestPermissions(); // 🔥 sudah benar
 
   glowTimer = Timer.periodic(const Duration(milliseconds: 80), (_) {
+    if (!mounted) return;
+
     setState(() {
       glow += 0.05;
       if (glow > 1) glow = 0.3;
     });
   });
 }
-void startListening() async {
-  bool available = await speech.initialize();
+Future<void> startListening() async {
+  try {
+    if (isListening) return;
 
-  if (available) {
+    // 🔥 INIT DI SINI (AMAN)
+    speech = stt.SpeechToText();
+
+    var status = await Permission.microphone.request();
+
+    if (!status.isGranted) {
+      print("❌ MIC DITOLAK");
+      return;
+    }
+
+    if (status.isPermanentlyDenied) {
+      openAppSettings();
+      return;
+    }
+
+    bool available = await speech.initialize();
+
+    if (!available) {
+      print("❌ Speech tidak tersedia");
+      return;
+    }
+
     setState(() => isListening = true);
 
-    speech.listen(
+    await speech.listen(
       localeId: "id_ID",
-      listenFor: const Duration(seconds: 5), // 🔥 tambahkan ini
       onResult: (result) {
-        setState(() {
-          lastWords = result.recognizedWords.toLowerCase();
-        });
-
-        processVoiceCommand(lastWords);
+        if (result.finalResult) {
+          processVoiceCommand(result.recognizedWords.toLowerCase());
+        }
       },
     );
+
+  } catch (e) {
+    print("💥 ERROR VOICE: $e");
   }
 }
 void stopListening() async {
@@ -530,15 +565,28 @@ void stopListening() async {
 void processVoiceCommand(String command) {
   command = command.toLowerCase();
 
-  if (command.contains("start") || command.contains("nyalakan")) {
-    sendBT("START");
-    return;
-  }
+// ===== START =====
+if (command.contains("start") ||
+    command.contains("nyala") ||
+    command.contains("hidup") ||
+    command.contains("hidupkan") ||
+    command.contains("mulai") ||
+    command.contains("matrix on")) {
 
-  if (command.contains("stop") || command.contains("matikan")) {
-    sendBT("STOP");
-    return;
-  }
+  sendBT("START");
+  return;
+}
+
+// ===== STOP =====
+if (command.contains("stop") ||
+    command.contains("mati") ||
+    command.contains("matikan") ||
+    command.contains("off") ||
+    command.contains("matrix off")) {
+
+  sendBT("STOP");
+  return;
+}
 
   if (command.contains("animasi") || command.contains("mainkan")) {
     RegExp reg = RegExp(r'\d+');
@@ -787,25 +835,28 @@ Container(
     isExpanded: true,
     dropdownColor: Colors.black,
     underline: const SizedBox(),
+
     icon: const Icon(Icons.bluetooth, color: Colors.cyanAccent),
 
-    items: devicesList.map((device) {
-      String name = deviceNames[device.id.toString()] ??
-                    device.platformName;
+items: devicesList.map((device) {
 
-      return DropdownMenuItem<BluetoothDevice>(
-        value: device,
-        child: Text(
-          name.isNotEmpty ? name : "ESP (${device.id})",
-        ),
-      );
-    }).toList(),
+  String name = deviceNames[device.id.toString()] ??
+                device.platformName;
 
-    onChanged: (device) {
-      setState(() {
-        selectedDevice = device;
-      });
-    },
+  return DropdownMenuItem<BluetoothDevice>(
+    value: device,
+    child: Text(
+      name.isNotEmpty ? name : "ESP (${device.id})",
+    ),
+  );
+
+}).toList(),
+
+onChanged: (device) {
+  setState(() {
+    selectedDevice = device;
+  });
+},
   ),
 ),
 
