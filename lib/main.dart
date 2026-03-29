@@ -7,7 +7,13 @@ import 'package:syncfusion_flutter_gauges/gauges.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.dumpErrorToConsole(details);
+  };
+
   runApp(const MyApp());
 }
 
@@ -173,6 +179,12 @@ bool isUploading = false;
 class _HomePageState extends State<HomePage> {
 late stt.SpeechToText speech;
 bool isListening = false;
+
+  Future<void> requestPermissions() async {
+    await Permission.bluetooth.request();
+    await Permission.bluetoothScan.request();
+    await Permission.bluetoothConnect.request();
+  }
 String lastWords = "";
 BluetoothDevice? device;
 BluetoothCharacteristic? txCharacteristic;
@@ -450,7 +462,7 @@ Future<void> scanDevices() async {
   await FlutterBluePlus.stopScan();
   await Future.delayed(const Duration(milliseconds: 300));
 
-  await FlutterBluePlus.turnOn();
+
   await Future.delayed(const Duration(seconds: 1));
 
   await FlutterBluePlus.startScan(
@@ -494,15 +506,19 @@ void dispose() {
 @override
 void initState() {
   super.initState();
-  // 🔥 JANGAN init di awal
-// speech = stt.SpeechToText();
-scanDevices(); // 🔥 VERSI BARU
+
+  requestPermissions(); // 🔥 TAMBAHKAN INI
+
+  Future.delayed(const Duration(seconds: 1), () {
   glowTimer = Timer.periodic(const Duration(milliseconds: 80), (_) {
+    if (!mounted) return;
+
     setState(() {
       glow += 0.05;
       if (glow > 1) glow = 0.3;
     });
   });
+});
 }
 Future<void> startListening() async {
   try {
@@ -839,13 +855,10 @@ items: devicesList.map((device) {
 
 }).toList(),
 
-onChanged: (device) async {
+onChanged: (device) {
   setState(() {
     selectedDevice = device;
   });
-
-  await Future.delayed(const Duration(milliseconds: 200));
-  await connectToBT();
 },
   ),
 ),
