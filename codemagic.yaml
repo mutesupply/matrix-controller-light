@@ -1,6 +1,6 @@
 workflows:
   ios-release:
-    name: iOS Build (No Sign)
+    name: iOS Build No Sign
 
     environment:
       flutter: stable
@@ -10,8 +10,12 @@ workflows:
       - name: Get packages
         script: flutter pub get
 
-      - name: Build iOS
-        script: flutter build ios --release --no-codesign --no-tree-shake-icons
+      - name: Build iOS without signing
+        script: |
+          flutter build ios --config-only
+          cd ios
+
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 
       - name: Create IPA
         script: |
