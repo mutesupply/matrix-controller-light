@@ -78,5 +78,13 @@
 
 <key>NSSpeechRecognitionUsageDescription</key>
 <string>App membutuhkan speech recognition untuk perintah suara</string>
+<key>NSLocalNetworkUsageDescription</key>
+<string>App membutuhkan koneksi ke ESP melalui jaringan lokal</string>
+
+<key>NSBonjourServices</key>
+<array>
+    <string>_http._tcp</string>
+</array>
+
 </dict>
 </plist>
