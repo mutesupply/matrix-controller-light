@@ -10,11 +10,9 @@ workflows:
       - name: Get packages
         script: flutter pub get
 
-      # ✅ BUILD UNTUK DEVICE (BUKAN SIMULATOR)
       - name: Build iOS
-        script: flutter build ios --release --no-codesign
+        script: flutter build ios --no-codesign
 
-      # 🔥 packaging jadi IPA
       - name: Create IPA
         script: |
           mkdir -p build_output/Payload
