@@ -7,12 +7,20 @@ workflows:
       xcode: latest
 
     scripts:
-      - flutter pub get
-      - flutter build ios --release --no-codesign
+      - name: Get packages
+        script: flutter pub get
 
-      - mkdir -p build_output
-      - cp -r build/ios/iphoneos/*.app build_output/
-      - zip -r build_output/app.zip build_output
+      # 🔥 FIX: pakai simulator (ANTI GAGAL)
+      - name: Build iOS Simulator
+        script: flutter build ios --simulator
+
+      # 🔥 packaging
+      - name: Create ZIP
+        script: |
+          mkdir -p build_output
+          cp -r build/ios/iphonesimulator/*.app build_output/
+          cd build_output
+          zip -r app.zip .
 
     artifacts:
       - build_output/app.zip
