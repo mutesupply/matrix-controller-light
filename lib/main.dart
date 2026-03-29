@@ -450,7 +450,6 @@ Future<void> scanDevices() async {
   await FlutterBluePlus.stopScan();
   await Future.delayed(const Duration(milliseconds: 300));
 
-  await FlutterBluePlus.turnOn();
   await Future.delayed(const Duration(seconds: 1));
 
   await FlutterBluePlus.startScan(
@@ -495,7 +494,7 @@ void dispose() {
 void initState() {
   super.initState();
   speech = stt.SpeechToText();
-scanDevices(); // 🔥 VERSI BARU
+
   glowTimer = Timer.periodic(const Duration(milliseconds: 80), (_) {
     setState(() {
       glow += 0.05;
@@ -790,15 +789,19 @@ Container(
     icon: const Icon(Icons.bluetooth, color: Colors.cyanAccent),
 
     items: devicesList.map((device) {
-      return DropdownMenuItem(
-        value: device,
-String name = deviceNames[device.id.toString()] ??
-              device.platformName;
 
-child: Text(
-  name.isNotEmpty ? name : "ESP (${device.id})",
-),
-      );
+
+  String name = deviceNames[device.id.toString()] ??
+                device.platformName;
+
+  return DropdownMenuItem<BluetoothDevice>(
+    value: device,
+    child: Text(
+      name.isNotEmpty ? name : "ESP (${device.id})",
+    ),
+  );
+
+}).toList(),
     }).toList(),
 
 onChanged: (device) async {
@@ -807,7 +810,7 @@ onChanged: (device) async {
   });
 
   await Future.delayed(const Duration(milliseconds: 200));
-  await connectToBT();
+
 },
   ),
 ),
