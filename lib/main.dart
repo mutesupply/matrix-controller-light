@@ -5,7 +5,7 @@ import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 
 import 'dart:async';
-
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 void main() {
   runApp(const MyApp());
@@ -181,7 +181,7 @@ bool isConnecting = false;
 StreamSubscription<BluetoothConnectionState>? connectionSub;
 List<BluetoothDevice> devicesList = [];
 BluetoothDevice? selectedDevice;
-
+Map<String, String> deviceNames = {};
 Widget glowButton(String text, VoidCallback onTap, {bool loading = false}) {
   return GestureDetector(
     onTap: loading ? null : onTap,
@@ -429,27 +429,49 @@ color: title == "WELCOME" && welcome > 0
 StreamSubscription? scanSub;
 
 Future<void> scanDevices() async {
+
+  // 🔥 ambil device yg sudah connect
+  List<BluetoothDevice> connected =
+      FlutterBluePlus.connectedDevices;
+
+  for (var d in connected) {
+    if (!devicesList.any((e) => e.id == d.id)) {
+      devicesList.add(d);
+    }
+  }
+
+  // 🔥 jangan hapus device yg sedang connect
   setState(() {
-    devicesList.clear();
+    if (device != null) {
+      devicesList.removeWhere((d) => d.id != device!.id);
+    }
   });
 
   await FlutterBluePlus.stopScan();
   await Future.delayed(const Duration(milliseconds: 300));
 
   await FlutterBluePlus.turnOn();
-  await Future.delayed(const Duration(seconds: 1)); // 🔥 penting
+  await Future.delayed(const Duration(seconds: 1));
 
   await FlutterBluePlus.startScan(
     timeout: const Duration(seconds: 10),
-    continuousUpdates: true,
-    androidUsesFineLocation: true,
+    withServices: [
+      Guid("12345678-1234-1234-1234-1234567890ab") // 🔥 WAJIB iOS
+    ],
   );
 
   scanSub?.cancel();
 
   scanSub = FlutterBluePlus.scanResults.listen((results) {
+
     for (ScanResult r in results) {
 
+      // 🔥 simpan nama device
+      if (r.device.platformName.isNotEmpty) {
+        deviceNames[r.device.id.toString()] = r.device.platformName;
+      }
+
+      // 🔥 tambah ke list kalau belum ada
       if (!devicesList.any((d) => d.id == r.device.id)) {
         setState(() {
           devicesList.add(r.device);
@@ -460,7 +482,6 @@ Future<void> scanDevices() async {
     }
   });
 }
-
 late Timer glowTimer;
 @override
 void dispose() {
@@ -482,23 +503,61 @@ scanDevices(); // 🔥 VERSI BARU
     });
   });
 }
-void startListening() async {
-  bool available = await speech.initialize();
+Future<void> startListening() async {
+  try {
+    if (isListening) return;
 
-  if (available) {
+    // 🔥 WAJIB: request mic dulu
+var status = await Permission.microphone.request();
+
+// 🔥 TAMBAHKAN INI DI SINI
+if (status.isPermanentlyDenied) {
+  print("❌ PERMISSION PERMANENT DENY");
+
+  openAppSettings(); // buka setting HP
+  return;
+}
+
+// 🔥 INI SUDAH ADA (BIARKAN)
+if (!status.isGranted) {
+  print("❌ MIC DITOLAK");
+  return;
+}
+
+    bool available = await speech.initialize(
+      onStatus: (status) {
+        print("STATUS: $status");
+      },
+      onError: (error) {
+        print("ERROR: $error");
+        setState(() => isListening = false);
+      },
+    );
+
+    if (!available) {
+      print("❌ Speech tidak tersedia");
+      return;
+    }
+
     setState(() => isListening = true);
 
-    speech.listen(
+    await speech.listen(
       localeId: "id_ID",
-      listenFor: const Duration(seconds: 5), // 🔥 tambahkan ini
+      listenFor: const Duration(seconds: 10),
+      pauseFor: const Duration(seconds: 3),
       onResult: (result) {
         setState(() {
           lastWords = result.recognizedWords.toLowerCase();
         });
 
-        processVoiceCommand(lastWords);
+        if (result.finalResult) {
+          processVoiceCommand(lastWords);
+        }
       },
     );
+  } catch (e) {
+    print("💥 CRASH VOICE: $e");
+    setState(() => isListening = false);
   }
 }
 void stopListening() async {
@@ -508,15 +567,28 @@ void stopListening() async {
 void processVoiceCommand(String command) {
   command = command.toLowerCase();
 
-  if (command.contains("start") || command.contains("nyalakan")) {
-    sendBT("START");
-    return;
-  }
+// ===== START =====
+if (command.contains("start") ||
+    command.contains("nyala") ||
+    command.contains("hidup") ||
+    command.contains("hidupkan") ||
+    command.contains("mulai") ||
+    command.contains("matrix on")) {
 
-  if (command.contains("stop") || command.contains("matikan")) {
-    sendBT("STOP");
-    return;
-  }
+  sendBT("START");
+  return;
+}
+
+// ===== STOP =====
+if (command.contains("stop") ||
+    command.contains("mati") ||
+    command.contains("matikan") ||
+    command.contains("off") ||
+    command.contains("matrix off")) {
+
+  sendBT("STOP");
+  return;
+}
 
   if (command.contains("animasi") || command.contains("mainkan")) {
     RegExp reg = RegExp(r'\d+');
@@ -771,11 +843,11 @@ Container(
     items: devicesList.map((device) {
       return DropdownMenuItem(
         value: device,
+String name = deviceNames[device.id.toString()] ??
+              device.platformName;
+
 child: Text(
-  device.platformName.isNotEmpty
-      ? device.platformName
-      : "ESP (${device.id})", // 🔥 TAMBAH KOMA DI SINI
-  style: const TextStyle(color: Colors.white),
+  name.isNotEmpty ? name : "ESP (${device.id})",
 ),
       );
     }).toList(),

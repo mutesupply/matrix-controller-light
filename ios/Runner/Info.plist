@@ -72,5 +72,11 @@
 
 <key>NSBluetoothAlwaysUsageDescription</key>
 <string>App needs Bluetooth to connect to device</string>
+
+<key>NSMicrophoneUsageDescription</key>
+<string>App membutuhkan microphone untuk voice control</string>
+
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>App membutuhkan speech recognition untuk perintah suara</string>
 </dict>
 </plist>
