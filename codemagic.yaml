@@ -11,12 +11,14 @@ workflows:
         script: flutter pub get
 
       - name: Prepare iOS
-        script: flutter build ios --config-only
+        script: |
+          flutter clean
+          flutter pub get
 
       - name: Build iOS without signing
         script: |
           cd ios
-          pod install
+          pod install --repo-update
 
           xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 
