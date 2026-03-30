@@ -17,15 +17,19 @@ workflows:
 
       - name: Build iOS without signing
         script: |
-          cd ios
-          pod install --repo-update
-
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          flutter build ios --no-codesign
+          ls build/ios/iphoneos/
 
       - name: Create IPA
         script: |
+          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+            echo "❌ Runner.app NOT FOUND"
+            exit 1
+          fi
+
           mkdir -p build_output/Payload
           cp -r build/ios/iphoneos/Runner.app build_output/Payload/
+
           cd build_output
           zip -r app.ipa Payload
 
