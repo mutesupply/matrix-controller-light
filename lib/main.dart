@@ -769,17 +769,16 @@ Container(
 
     icon: const Icon(Icons.bluetooth, color: Colors.cyanAccent),
 
-    items: devicesList.map((device) {
-      return DropdownMenuItem(
-        value: device,
-String name = deviceNames[device.id.toString()] ??
-              device.platformName;
+items: devicesList.map((device) {
+  String name = deviceNames[device.id.toString()] ?? device.platformName;
 
-child: Text(
-  name.isNotEmpty ? name : "ESP (${device.id})",
-),
-      );
-    }).toList(),
+  return DropdownMenuItem<BluetoothDevice>(
+    value: device,
+    child: Text(
+      name.isNotEmpty ? name : "ESP (${device.id})",
+    ),
+  );
+}).toList(),
 
 onChanged: (device) async {
   setState(() {
